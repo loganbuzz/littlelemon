@@ -9,9 +9,16 @@ import SwiftUI
 
 @main
 struct Little_Lemon_CapstoneApp: App {
+    let persistenceController = PersistenceController.shared
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if UserDefaults.standard.bool(forKey: kIsLoggedInKey) {
+                Home()
+                    .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            } else {
+                Onboarding()
+            }
         }
     }
 }
