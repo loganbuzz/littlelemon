@@ -11,20 +11,22 @@ import CoreData
 struct Menu: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var searchText = ""
-    @State private var dataLoaded = false
-    
+    @State private var dataLoaded = false // Tracks if data has been loaded
+
+    // Function to build sort descriptors
     func buildSortDescriptors() -> [NSSortDescriptor] {
         return [NSSortDescriptor(key: "title", ascending: true, selector: #selector(NSString.localizedStandardCompare(_:)))]
     }
-    
+
+    // Function to build predicate based on search text
     func buildPredicate() -> NSPredicate {
         if searchText.isEmpty {
-            return NSPredicate(value: true)
+            return NSPredicate(value: true) // Fetch all dishes if search text is empty
         } else {
             return NSPredicate(format: "title CONTAINS[cd] %@", searchText)
         }
     }
-    
+
     var body: some View {
         NavigationView {
             VStack(alignment: .leading) {
@@ -32,33 +34,55 @@ struct Menu: View {
                 Text("Little Lemon")
                     .font(.largeTitle)
                     .padding(.bottom, 5)
-    
+
                 Text("Chicago")
                     .font(.title2)
                     .padding(.bottom, 5)
-    
+
                 Text("We are a family-owned Mediterranean restaurant, focused on traditional recipes served with a modern twist.")
                     .padding(.bottom, 20)
-                
+
                 // Search Field
                 TextField("Search menu", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding(.bottom, 10)
-                
+
                 // Fetch and display dishes from Core Data
                 FetchedObjects(
                     predicate: buildPredicate(),
                     sortDescriptors: buildSortDescriptors()
                 ) { (dishes: [Dish]) in
-                    if dishes.isEmpty {
-                        ProgressView("Loading menu...")
-                            .onAppear {
-                                if !dataLoaded {
-                                    getMenuData()
-                                    dataLoaded = true
+                    if !dataLoaded {
+                        // Center the ProgressView vertically
+                        VStack {
+                            Spacer()
+                            ProgressView("Loading menu...")
+                                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                                .scaleEffect(1.5)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onAppear {
+                            getMenuData()
+                            dataLoaded = true
+                        }
+                    } else if dishes.isEmpty {
+                        // Center the EmptyStateView vertically
+                        VStack {
+                            Spacer()
+                            EmptyStateView(
+                                message: "No dishes found matching your search.",
+                                resetAction: {
+                                    withAnimation {
+                                        searchText = ""
+                                    }
                                 }
-                            }
+                            )
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
+                        // Display the list of dishes
                         List {
                             ForEach(dishes, id: \.self) { dish in
                                 NavigationLink(destination: DishDetail(dish: dish)) {
@@ -69,9 +93,9 @@ struct Menu: View {
                                             Text("$\(dish.price ?? "0.00")")
                                                 .font(.subheadline)
                                         }
-    
+
                                         Spacer()
-    
+
                                         if let imageUrl = dish.image,
                                            let url = URL(string: imageUrl) {
                                             AsyncImage(url: url) { image in
