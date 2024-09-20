@@ -8,20 +8,26 @@
 import SwiftUI
 import CoreData
 
-struct Menu: View {
+struct MenuView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var searchText = ""
     @State private var dataLoaded = false // Tracks if data has been loaded
 
-    // Function to build sort descriptors
+    // MARK: - Build Sort Descriptors
     func buildSortDescriptors() -> [NSSortDescriptor] {
-        return [NSSortDescriptor(key: "title", ascending: true, selector: #selector(NSString.localizedStandardCompare(_:)))]
+        return [
+            NSSortDescriptor(
+                key: "title",
+                ascending: true,
+                selector: #selector(NSString.localizedStandardCompare(_:))
+            )
+        ]
     }
 
-    // Function to build predicate based on search text
+    // MARK: - Build Predicate for Filtering
     func buildPredicate() -> NSPredicate {
         if searchText.isEmpty {
-            return NSPredicate(value: true) // Fetch all dishes if search text is empty
+            return NSPredicate(value: true) // Fetch all dishes if no search query
         } else {
             return NSPredicate(format: "title CONTAINS[cd] %@", searchText)
         }
@@ -30,21 +36,13 @@ struct Menu: View {
     var body: some View {
         NavigationView {
             VStack(alignment: .leading) {
-                // Header Information
-                Text("Little Lemon")
-                    .font(.largeTitle)
-                    .padding(.bottom, 5)
-
-                Text("Chicago")
-                    .font(.title2)
-                    .padding(.bottom, 5)
-
-                Text("We are a family-owned Mediterranean restaurant, focused on traditional recipes served with a modern twist.")
-                    .padding(.bottom, 20)
-
-                // Search Field
+                // Search Field with branded styling
                 TextField("Search menu", text: $searchText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(8)
+                    .shadow(radius: 2)
+                    .padding(.horizontal)
                     .padding(.bottom, 10)
 
                 // Fetch and display dishes from Core Data
@@ -53,23 +51,19 @@ struct Menu: View {
                     sortDescriptors: buildSortDescriptors()
                 ) { (dishes: [Dish]) in
                     if !dataLoaded {
-                        // Center the ProgressView vertically
-                        VStack {
-                            Spacer()
+                        // Center the ProgressView
+                        CenteredView {
                             ProgressView("Loading menu...")
-                                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                                .progressViewStyle(CircularProgressViewStyle(tint: BrandColors.primary2))
                                 .scaleEffect(1.5)
-                            Spacer()
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .onAppear {
                             getMenuData()
                             dataLoaded = true
                         }
                     } else if dishes.isEmpty {
-                        // Center the EmptyStateView vertically
-                        VStack {
-                            Spacer()
+                        // Center the EmptyStateView
+                        CenteredView {
                             EmptyStateView(
                                 message: "No dishes found matching your search.",
                                 resetAction: {
@@ -78,36 +72,13 @@ struct Menu: View {
                                     }
                                 }
                             )
-                            Spacer()
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         // Display the list of dishes
                         List {
                             ForEach(dishes, id: \.self) { dish in
                                 NavigationLink(destination: DishDetail(dish: dish)) {
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text(dish.title ?? "Unknown Dish")
-                                                .font(.headline)
-                                            Text("$\(dish.price ?? "0.00")")
-                                                .font(.subheadline)
-                                        }
 
-                                        Spacer()
-
-                                        if let imageUrl = dish.image,
-                                           let url = URL(string: imageUrl) {
-                                            AsyncImage(url: url) { image in
-                                                image
-                                                    .resizable()
-                                                    .aspectRatio(contentMode: .fit)
-                                                    .frame(width: 80, height: 80)
-                                            } placeholder: {
-                                                ProgressView()
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -115,13 +86,14 @@ struct Menu: View {
                     }
                 }
             }
-            .padding()
+            .padding(.top, 10)
+            .background(BrandColors.highlight.edgesIgnoringSafeArea(.all)) // Set background to light grey
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 
-    // Function to fetch menu data from the API
+    // MARK: - Fetch Menu Data from API
     func getMenuData() {
         let serverURL = "https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/menu.json"
 
@@ -150,8 +122,7 @@ struct Menu: View {
 
                 // Save to Core Data on the main thread
                 DispatchQueue.main.async {
-                    // Clear existing data
-                    PersistenceController.shared.clear()
+                    PersistenceController.shared.clear() // Clear old data
 
                     // Save new data
                     for item in menuList.menu {
@@ -174,11 +145,61 @@ struct Menu: View {
                 print("Error decoding data: \(error)")
             }
         }
-
         task.resume()
     }
 }
 
+struct CenteredView<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack {
+            Spacer()
+            content
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct DishRow: View {
+    let dish: Dish
+
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading) {
+                Text(dish.title ?? "Unknown Dish")
+                    .font(BrandFonts.body)
+                    .foregroundColor(BrandColors.darkShade)
+
+                Text("$\(dish.price ?? "0.00")")
+                    .font(BrandFonts.caption)
+                    .foregroundColor(BrandColors.primary2)
+            }
+
+            Spacer()
+
+            if let imageUrl = dish.image, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 80, height: 80)
+                        .cornerRadius(8)
+                } placeholder: {
+                    ProgressView()
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+
 #Preview {
-    Menu()
+    MenuView()
 }

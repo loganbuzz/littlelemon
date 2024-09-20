@@ -24,7 +24,7 @@ struct UserProfile: View {
                 .padding(.top, 20)
 
             // Profile Image
-            Image("profile-image-placeholder")
+            Image("Profile")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 100)
